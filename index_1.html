@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voice Assistant</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: linear-gradient(160deg, #0f1222 0%, #1a1f3a 100%);
+    color: #fff;
+  }
+  .card { text-align: center; padding: 48px 40px; max-width: 420px; width: 90%; }
+  h1 { font-size: 24px; font-weight: 600; margin-bottom: 8px; }
+  p.sub { color: #9aa0b8; font-size: 14px; margin-bottom: 36px; }
+
+  .orb {
+    width: 140px; height: 140px; border-radius: 50%;
+    margin: 0 auto 32px;
+    background: radial-gradient(circle at 35% 30%, #6c7bff, #3b2fd4);
+    box-shadow: 0 0 60px rgba(99, 102, 241, 0.45);
+    transition: transform 0.3s ease;
+  }
+  .orb.active { animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1);    box-shadow: 0 0 60px rgba(99,102,241,.45); }
+    50%      { transform: scale(1.08); box-shadow: 0 0 90px rgba(99,102,241,.75); }
+  }
+
+  button {
+    border: 0; border-radius: 999px; padding: 14px 36px;
+    font-size: 16px; font-weight: 600; cursor: pointer; transition: opacity .2s;
+  }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  #callBtn { background: #6c7bff; color: #fff; }
+  #endBtn  { background: #e5484d; color: #fff; display: none; margin-left: 10px; }
+
+  #status { margin-top: 20px; font-size: 13px; color: #9aa0b8; min-height: 18px; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="orb" id="orb"></div>
+    <h1>Talk to our Assistant</h1>
+    <p class="sub">Press the button and start speaking</p>
+    <button id="callBtn" disabled>Loading…</button>
+    <button id="endBtn">End Call</button>
+    <div id="status"></div>
+  </div>
+
+<script type="module">
+  import Vapi from "https://esm.sh/@vapi-ai/web";
+
+  // ── CONFIG ────────────────────────────────────────────────
+  // If you get a 401/403, replace PUBLIC_KEY with the Public
+  // Key from Vapi Dashboard → Organization Settings → API Keys.
+  const PUBLIC_KEY   = "913aac5f-eec2-4d16-8131-9b343cc4e220";
+  const ASSISTANT_ID = "7b46e08c-1379-48cf-9f64-5090bd5886d1";
+  // ──────────────────────────────────────────────────────────
+
+  const vapi    = new Vapi(PUBLIC_KEY);
+  const orb     = document.getElementById("orb");
+  const callBtn = document.getElementById("callBtn");
+  const endBtn  = document.getElementById("endBtn");
+  const status  = document.getElementById("status");
+
+  callBtn.textContent = "Start Call";
+  callBtn.disabled = false;
+
+  callBtn.onclick = () => {
+    callBtn.disabled = true;
+    status.textContent = "Connecting…";
+    vapi.start(ASSISTANT_ID);
+  };
+  endBtn.onclick = () => vapi.stop();
+
+  vapi.on("call-start", () => {
+    status.textContent = "Connected — speak now";
+    orb.classList.add("active");
+    callBtn.style.display = "none";
+    endBtn.style.display  = "inline-block";
+    callBtn.disabled = false;
+  });
+
+  vapi.on("call-end", () => {
+    status.textContent = "Call ended";
+    orb.classList.remove("active");
+    callBtn.style.display = "inline-block";
+    endBtn.style.display  = "none";
+  });
+
+  vapi.on("speech-start", () => { status.textContent = "Assistant speaking…"; });
+  vapi.on("speech-end",   () => { status.textContent = "Listening…"; });
+
+  vapi.on("error", (e) => {
+    console.error(e);
+    status.textContent = "Error: " + (e?.error?.message || e?.message || "check console");
+    callBtn.disabled = false;
+    callBtn.style.display = "inline-block";
+    endBtn.style.display  = "none";
+    orb.classList.remove("active");
+  });
+</script>
+</body>
+</html>
